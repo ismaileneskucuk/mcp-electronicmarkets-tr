@@ -12,9 +12,8 @@ class DirencScraper(BaseScraper):
         """
         all_results = []
         page_num = 1
-        MAX_PAGES = 10 # Safety limit
         
-        while page_num <= MAX_PAGES:
+        while page_num <= self.max_pages:
             # Using the specialized loader URL you provided
             url = f"https://www.direnc.net/srv/service/product/loader?arama&q={query}&link=arama&pg={page_num}"
             

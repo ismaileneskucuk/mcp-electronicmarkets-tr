@@ -5,7 +5,9 @@ from bs4 import BeautifulSoup
 
 class BaseScraper(ABC):
     def __init__(self):
-        # Gerçek bir tarayıcı gibi görünmek için Header
+        # Default pagination limit for high relevance
+        self.max_pages = 1
+        # Standard headers to mimic a real browser
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -14,21 +16,21 @@ class BaseScraper(ABC):
 
     @abstractmethod
     async def scrape(self, query: str) -> list[ProductModel]:
-        """Her alt sınıf bu metodu kendine göre doldurmak zorundadır."""
+        """Each subclass must implement this method to perform site-specific scraping."""
         pass
 
     async def get_soup(self, url: str) -> BeautifulSoup:
-        """Ortak HTML çekme ve Soup objesi oluşturma metodu."""
+        """Helper method to fetch HTML and return a BeautifulSoup object."""
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             response = await client.get(url, headers=self.headers)
-            response.raise_for_status() # Hata varsa fırlatır
+            response.raise_for_status()
             return BeautifulSoup(response.text, 'html.parser')
 
     def clean_price(self, price_str: str) -> float:
-        """Fiyat metnini temizleyip float'a çeviren ortak yardımcı metot."""
+        """Helper method to clean Turkish currency strings and convert to float."""
         if not price_str:
             return 0.0
-        # "263,44 ₺" -> 263.44
+        # "3.842,55 ₺" -> 3842.55
         clean = price_str.replace("₺", "").replace("TL", "").replace(".", "").replace(",", ".").strip()
         try:
             return float(clean)

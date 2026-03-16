@@ -11,11 +11,15 @@ mcp = FastMCP("ElectronicMarkets-TR")
 @mcp.tool()
 async def search_in_markets(product_name: str, only_in_stock: bool = True):
     """
-    Searches for electronic components in Turkish markets (Robocombo, Robotistan, Direnc.net, Robo90).
-    :param product_name: Name of the product to search.
-    :param only_in_stock: If True, only products available for purchase are returned.
-    :return: A list of products sorted by price (cheapest first).
+    Retrieves RAW product data from Turkish electronics markets (Robocombo, Robotistan, Direnc.net, Robo90).
+    
+    :param product_name: The target product name or keywords to search for in the markets.
+    :param only_in_stock: If True (default), filters out products that are currently out of stock.
+    
+    Note: Results are provided in their raw state from the first search pages. 
+    The AI must evaluate relevance and sort the final list for the user.
     """
+    clean_query = product_name.strip()
     scrapers = [
         RobocomboScraper(),
         RobotistanScraper(),
@@ -23,39 +27,28 @@ async def search_in_markets(product_name: str, only_in_stock: bool = True):
         Robo90Scraper()
     ]
     
-    # Run all scrapers concurrently for maximum performance
-    tasks = [scraper.scrape(product_name) for scraper in scrapers]
+    # Concurrent fetching
+    tasks = [scraper.scrape(clean_query) for scraper in scrapers]
     responses = await asyncio.gather(*tasks, return_exceptions=True)
     
-    all_results = []
+    unique_results = {}
     for res in responses:
         if isinstance(res, list):
-            all_results.extend(res)
+            for p in res:
+                # Deduplication by URL
+                if p.url not in unique_results:
+                    unique_results[p.url] = p
         else:
-            print(f"Error during scraping process: {res}", file=sys.stderr)
+            # Output errors to stderr so they don't break the JSON response
+            print(f"Scraper Error: {res}", file=sys.stderr)
             
-    # Apply stock filter if requested
+    final_list = list(unique_results.values())
+    
+    # Basic stock filtering
     if only_in_stock:
-        all_results = [p for p in all_results if p.stock_status]
+        final_list = [p for p in final_list if p.stock_status]
             
-    # Global sorting by price across all markets
-    return sorted(all_results, key=lambda x: x.price)
-
-async def test_run():
-    print("--- STARTING QUAD-MARKET SEARCH ---")
-    query = "arduino uno"
-    results = await search_in_markets(query, only_in_stock=True)
-    
-    if not results:
-        print(f"No available products found for '{query}'.")
-        return
-
-    for r in results:
-        print(f"[{r.site}] {r.name} - {r.price} TL")
-    
-    print(f"\nTotal available products from 4 markets: {len(results)}")
-    print("--- SEARCH COMPLETED ---")
+    return final_list
 
 if __name__ == "__main__":
-    # mcp.run() # Use for real MCP server mode
-    asyncio.run(test_run()) # Use for local debugging
+    mcp.run()

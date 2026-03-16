@@ -12,9 +12,8 @@ class RobotistanScraper(BaseScraper):
         """
         all_results = []
         page_num = 1
-        MAX_PAGES = 10
-        
-        while page_num <= MAX_PAGES:
+
+        while page_num <= self.max_pages:
             # URL with pagination parameter
             url = f"https://www.robotistan.com/arama?q={query}&pg={page_num}"
             
