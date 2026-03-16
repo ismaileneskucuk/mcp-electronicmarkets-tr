@@ -3,18 +3,20 @@ import sys
 from fastmcp import FastMCP
 from app.scrapers.robocombo import RobocomboScraper
 from app.scrapers.robotistan import RobotistanScraper
+from app.scrapers.direnc import DirencScraper
 
 mcp = FastMCP("ElectronicMarkets-TR")
 
 @mcp.tool()
-async def search_in_markets(product_name: str):
+async def search_in_markets(product_name: str, only_in_stock: bool = True):
     """
-    Searches for electronic components in Turkish markets (Robocombo, Robotistan) 
-    by product name. Returns a list of products sorted by price.
+    Searches for electronic components in Turkish markets (Robocombo, Robotistan, Direnc.net).
+    Returns a sorted list of products by price.
     """
     scrapers = [
         RobocomboScraper(),
-        #RobotistanScraper()
+        RobotistanScraper(),
+        DirencScraper()
     ]
     
     tasks = [scraper.scrape(product_name) for scraper in scrapers]
@@ -25,21 +27,27 @@ async def search_in_markets(product_name: str):
         if isinstance(res, list):
             all_results.extend(res)
         else:
-            print(f"Error during scraping: {res}", file=sys.stderr)
+            print(f"Scraping error: {res}", file=sys.stderr)
             
-    return sorted(all_results, key=lambda x: (not x.stock_status, x.price))
+    if only_in_stock:
+        all_results = [p for p in all_results if p.stock_status]
+            
+    return sorted(all_results, key=lambda x: x.price)
 
-# DOSYANIN EN ALTINA EKLE (TEST İÇİN)
 async def test_run():
-    print("--- TEST BAŞLADI: Robocombo taranıyor... ---")
-    results = await search_in_markets("arduino")
+    print("--- STARTING MULTI-MARKET SEARCH ---")
+    # Set only_in_stock=True for cleaner testing
+    results = await search_in_markets("arduino", only_in_stock=True)
+    
     if not results:
-        print("Sonuç bulunamadı veya bir hata oluştu.")
+        print("No results found.")
+        
     for r in results:
-        status = "VAR" if r.stock_status else "YOK"
-        print(f"[{status}] {r.name} - {r.price} TL")
-    print("--- TEST BİTTİ ---")
+        print(f"[{r.site}] {r.name} - {r.price} TL")
+    
+    print(f"\nTotal products found: {len(results)}")
+    print("--- SEARCH FINISHED ---")
 
 if __name__ == "__main__":
-    # mcp.run() # <--- Bunu geçici olarak yorum satırı yap (başına # koy)
-    asyncio.run(test_run()) # Direkt fonksiyonu çalıştır
+    # mcp.run() # For production server
+    asyncio.run(test_run()) # For local testing
