@@ -2,31 +2,22 @@ import asyncio
 import sys
 from fastmcp import FastMCP
 from app.scrapers.robocombo import RobocomboScraper
+from app.scrapers.robotistan import RobotistanScraper
 
-# 1. Sunucumuzu Tanımlıyoruz
-# İsmi ne kadar net olursa, AI o kadar iyi anlar ne işe yaradığını.
 mcp = FastMCP("ElectronicMarkets-TR")
 
-# 2. Aracı (Tool) Tanımlıyoruz
-# @mcp.tool() dekoratörü, AI'ya "Bu fonksiyonu sen kullanabilirsin" der.
 @mcp.tool()
 async def search_in_markets(product_name: str):
     """
-    Searches for electronic components in Turkish markets (Robocombo, etc.) 
-    by product name. Returns a list of products with their price, 
-    stock status, and URL.
+    Searches for electronic components in Turkish markets (Robocombo, Robotistan) 
+    by product name. Returns a list of products sorted by price.
     """
-    # İleride buraya daha fazla scraper ekleyeceğiz (Robotistan, Direnc vb.)
     scrapers = [
         RobocomboScraper(),
-        # Buraya yeni scraperlar gelecek...
+        #RobotistanScraper()
     ]
     
-    # Tüm siteleri aynı anda (paralel) taramak için görev listesi oluşturuyoruz
     tasks = [scraper.scrape(product_name) for scraper in scrapers]
-    
-    # Matematik Mühendisliği farkı: asyncio.gather ile tüm siteleri 
-    # tek tek beklemek yerine AYNI ANDA tarıyoruz. Hız = 5x!
     responses = await asyncio.gather(*tasks, return_exceptions=True)
     
     all_results = []
@@ -34,14 +25,21 @@ async def search_in_markets(product_name: str):
         if isinstance(res, list):
             all_results.extend(res)
         else:
-            # Hataları sadece stderr'e basıyoruz (AI görmesin, biz görelim)
-            print(f"Tarama sırasında hata oluştu: {res}", file=sys.stderr)
+            print(f"Error during scraping: {res}", file=sys.stderr)
             
-    # En ucuz olanı en üste getirelim (Sorting)
-    # x.price'a göre küçükten büyüye sıralıyoruz.
-    sorted_results = sorted(all_results, key=lambda x: x.price)
-    
-    return sorted_results
+    return sorted(all_results, key=lambda x: (not x.stock_status, x.price))
+
+# DOSYANIN EN ALTINA EKLE (TEST İÇİN)
+async def test_run():
+    print("--- TEST BAŞLADI: Robocombo taranıyor... ---")
+    results = await search_in_markets("arduino")
+    if not results:
+        print("Sonuç bulunamadı veya bir hata oluştu.")
+    for r in results:
+        status = "VAR" if r.stock_status else "YOK"
+        print(f"[{status}] {r.name} - {r.price} TL")
+    print("--- TEST BİTTİ ---")
 
 if __name__ == "__main__":
-    mcp.run()
+    # mcp.run() # <--- Bunu geçici olarak yorum satırı yap (başına # koy)
+    asyncio.run(test_run()) # Direkt fonksiyonu çalıştır

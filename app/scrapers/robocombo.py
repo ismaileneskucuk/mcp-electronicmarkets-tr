@@ -1,52 +1,93 @@
-from bs4 import BeautifulSoup
+import json
+import httpx
 from app.scrapers.base import BaseScraper
 from app.models import ProductModel
+import sys
 
 class RobocomboScraper(BaseScraper):
+    """Scraper for Robocombo.com using their internal JSON API for better reliability."""
+
     async def scrape(self, query: str) -> list[ProductModel]:
-        # Robocombo arama URL'si (query parametresiyle)
-        url = f"https://www.robocombo.com/Arama?1&kelime={query}"
+        """
+        Fetches products from Robocombo by directly calling their product API.
+        Supports multi-page crawling.
+        """
+        all_results = []
+        page_num = 1
+        MAX_PAGES = 10  # Safety limit to prevent long wait times
         
-        try:
-            # Base class'taki get_soup metodunu kullanarak HTML'i çekiyoruz
-            soup = await self.get_soup(url)
-            results = []
+        while page_num <= MAX_PAGES:
+            # The internal API endpoint you discovered
+            api_url = "https://www.robocombo.com/api/product/GetProductList"
             
-            # Ürün kutucuklarını seç (ItemOrj class'lı divler)
-            items = soup.select("div.ItemOrj")
+            # Replicating the filter structure from your links
+            filter_json = {
+                "SearchKeyword": query,
+                "MinPrice": 0,
+                "MaxPrice": 0,
+                "IsInStock": False,
+                "IsPriceRequest": True,
+                "IsProductListPage": True,
+                "NonStockShowEnd": 1
+            }
             
-            for item in items:
-                # Ürün Adı ve Linki çekme
-                name_tag = item.select_one(".productName a")
-                if not name_tag: continue
+            paging_json = {
+                "PageItemCount": 0, # 0 means use site default (usually 48)
+                "PageNumber": page_num,
+                "OrderBy": "SMARTSORTING",
+                "OrderDirection": "DESC"
+            }
+
+            # Query parameters for the GET request
+            params = {
+                "c": "trtry0000",
+                "FilterJson": json.dumps(filter_json),
+                "PagingJson": json.dumps(paging_json),
+                "PageType": 10
+            }
+
+            try:
+                # We use httpx directly to get the JSON response
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    response = await client.get(api_url, headers=self.headers, params=params)
+                    response.raise_for_status()
+                    data = response.json()
                 
-                name = name_tag.text.strip()
-                link = name_tag['href']
-                if not link.startswith("http"):
-                    link = "https://www.robocombo.com" + link
+                products = data.get("products", [])
                 
-                # Fiyatı çekme ve temizleme (Base class'taki metotla)
-                price_tag = item.select_one(".discountPriceSpan")
-                price_text = price_tag.text if price_tag else "0"
-                price = self.clean_price(price_text)
+                # Stop if the current page has no products
+                if not products:
+                    break
                 
-                # Stok Durumu (TukendiIco varsa stok yoktur)
-                is_out_of_stock = item.select_one(".TukendiIco")
-                stock = False if is_out_of_stock else True
+                for p in products:
+                    # API returns clean data, no need for complex CSS selectors
+                    name = p.get("name", "")
+                    link = "https://www.robocombo.com" + p.get("url", "")
+                    
+                    # Using the price string with currency for our clean_price helper
+                    price_str = p.get("productSellPriceStr", "0")
+                    price = self.clean_price(price_str)
+                    
+                    # 'inStock' is a boolean returned directly by the API
+                    stock = p.get("inStock", False)
+                    
+                    all_results.append(ProductModel(
+                        site="Robocombo",
+                        name=name,
+                        price=price,
+                        stock_status=stock,
+                        url=link
+                    ))
                 
-                # Veriyi Pydantic modelimize uygun şekilde paketliyoruz
-                results.append(ProductModel(
-                    site="Robocombo",
-                    name=name,
-                    price=price,
-                    stock_status=stock,
-                    url=link
-                ))
+                # Check if we have reached the total count to stop early
+                total_count = data.get("totalProductCount", 0)
+                if len(all_results) >= total_count:
+                    break
+
+                page_num += 1
                 
-            return results
-            
-        except Exception as e:
-            # Hataları stderr'e basıyoruz ki MCP protokolü bozulmasın
-            import sys
-            print(f"Robocombo Scraper Hatası ({query}): {e}", file=sys.stderr)
-            return []
+            except Exception as e:
+                print(f"Robocombo Page {page_num} Error: {e}", file=sys.stderr)
+                break
+                
+        return all_results
