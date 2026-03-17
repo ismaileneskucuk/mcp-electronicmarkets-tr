@@ -25,7 +25,7 @@ Yapay zeka modellerinin (Claude, Gemini vb.) Türkiye yerel piyasasından gerçe
 
 1. **Depoyu klonlayın:**
    ```bash
-   git clone [https://github.com/ismaileneskucuk/mcp-electronicmarkets-tr.git](https://github.com/ismaileneskucuk/mcp-electronicmarkets-tr.git)
+   git clone https://github.com/ismaileneskucuk/mcp-electronicmarkets-tr.git
    cd mcp-electronicmarkets-tr
    ```
 
