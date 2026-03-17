@@ -45,15 +45,15 @@ Claude Desktop'ta kullanabilmek için `claude_desktop_config.json` dosyanıza a�
 {
   "mcpServers": {
     "electronic-markets-tr": {
-      "command": "python",
+      "command": "C:/PROJE_DIZINI/mcp-electronicmarkets-tr/venv/Scripts/python.exe",
       "args": [
-        "C:/YOL/TO/mcp-electronicmarkets-tr/app/main.py"
+        "C:/PROJE_DIZINI/mcp-electronicmarkets-tr/app/main.py"
       ]
     }
   }
 }
 ```
-*(Not: Python yolunu ve dosya yolunu kendi sisteminize göre güncellemeyi unutmayın.)*
+*(Not: Windows için venv/Scripts/python.exe, Mac/Linux için venv/bin/python yolu verilmelidir.)*
 
 ## 💡 Kullanım Örnekleri
 
