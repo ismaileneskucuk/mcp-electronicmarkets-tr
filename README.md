@@ -70,4 +70,3 @@ Bu proje, **Gemini** ve **Claude** yapay zeka modelleri ile "pair-programming" y
 
 ## ⚖️ Lisans
 Bu proje **MIT License** ile lisanslanmıştır.
-```
