@@ -41,18 +41,35 @@ Yapay zeka modellerinin (Claude, Gemini vb.) Türkiye yerel piyasasından gerçe
 
 ## 🤖 Claude Desktop Entegrasyonu
 
-Claude Desktop'ta kullanabilmek için `claude_desktop_config.json` dosyanıza aşağıdaki yapılandırmayı ekleyin. 
+Claude Desktop'ta kullanabilmek için `claude_desktop_config.json` dosyanıza aşağıdaki işletim sisteminize uygun yapılandırmayı ekleyin. 
 
-> **Önemli Not:** `command` kısmında sanal ortam (venv) içindeki Python yolunu, `args` kısmında ise `main.py` dosyasının **tam (absolute) yolunu** kendi sisteminize göre yazmalısınız.
+> **Önemli:** `command` ve `PYTHONPATH` kısımlarında kendi kullanıcı adınıza ve proje dizininize göre **tam dosya yolunu (Absolute Path)** yazmalısınız.
 
+### Windows Yapılandırması
 ```json
 {
   "mcpServers": {
     "electronic-markets-tr": {
-      "command": "C:/PROJE_DIZINI/mcp-electronicmarkets-tr/venv/Scripts/python.exe",
-      "args": [
-        "C:/PROJE_DIZINI/mcp-electronicmarkets-tr/app/main.py"
-      ]
+      "command": "C:/KULLANICI_YOLU/mcp-electronicmarkets-tr/venv/Scripts/python.exe",
+      "args": ["-m", "app.main"],
+      "env": {
+        "PYTHONPATH": "C:/KULLANICI_YOLU/mcp-electronicmarkets-tr"
+      }
+    }
+  }
+}
+```
+
+### Linux / Mac Yapılandırması
+```json
+{
+  "mcpServers": {
+    "electronic-markets-tr": {
+      "command": "/ABSOLUTE/PATH/TO/mcp-electronicmarkets-tr/venv/bin/python",
+      "args": ["-m", "app.main"],
+      "env": {
+        "PYTHONPATH": "/ABSOLUTE/PATH/TO/mcp-electronicmarkets-tr"
+      }
     }
   }
 }
