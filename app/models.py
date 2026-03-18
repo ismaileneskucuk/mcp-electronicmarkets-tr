@@ -1,4 +1,4 @@
-# app/models.py dosyası
+# app/models.py definition
 from pydantic import BaseModel, HttpUrl
 
 class ProductModel(BaseModel):

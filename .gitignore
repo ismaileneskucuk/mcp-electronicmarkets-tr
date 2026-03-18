@@ -11,3 +11,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Other
+mcp_server.log
